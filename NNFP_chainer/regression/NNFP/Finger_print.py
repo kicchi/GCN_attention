@@ -22,7 +22,6 @@ def sum_and_stack(features, idxs_list_of_lists):
 
 def array_rep_from_smiles(smiles):
     """Precompute everything we need from MolGraph so that we can free the memory asap."""
-    #print ("smiles size : ", (smiles))
     molgraph = graph_from_smiles_tuple(smiles)
     arrayrep = {'atom_features' : molgraph.feature_array('atom'),
                 'bond_features' : molgraph.feature_array('bond'),
@@ -30,13 +29,10 @@ def array_rep_from_smiles(smiles):
                 'rdkit_ix'      : molgraph.rdkit_ix_array()}  # For plotting only.
 
     for degree in degrees:
-        #print ((molgraph))
-        #import pdb;pdb.set_trace()
         arrayrep[('atom_neighbors', degree)] = \
             np.array(molgraph.neighbor_list(('atom', degree), 'atom'), dtype=int)
         arrayrep[('bond_neighbors', degree)] = \
             np.array(molgraph.neighbor_list(('atom', degree), 'bond'), dtype=int)
-    #print (arrayrep[('atom_neighbors', 1)])
     return arrayrep
 
 
@@ -114,13 +110,10 @@ class FP(Chain):
 			return F.relu(total_activations)
 
 		def output_layer_fun_and_atom_activations(self, smiles):
-			#array_rep = array_rep_from_smiles(tuple(smiles))
 			atom_features = array_rep['atom_features']
 			bond_features = array_rep['bond_features']
 
 			#atom_features = bool_to_float32(atom_features)
-			#print (atom_features[0])
-			#import pdb;pdb.set_trace()
 			#bond_features = bool_to_float32(bond_features)
 
 			all_layer_fps = []
@@ -136,9 +129,6 @@ class FP(Chain):
 			num_layers = self.model_params['fp_depth']
 			for layer in range(num_layers):
 				write_to_fingerprint(self, atom_features, layer)
-				#print (len(atom_features))
-				#print (len(bond_features))
-				#import pdb;pdb.set_trace()
 				atom_features = update_layer(self, layer, atom_features, bond_features, array_rep, normalize=False)
 				atom_features = atom_features._data[0]
 
