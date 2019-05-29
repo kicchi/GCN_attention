@@ -41,8 +41,8 @@ model_params = dict(fp_length = 50,
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
 					conv_width = 20,    #必要なパラメータはこれだけ（？）
 					h1_size = 100,      #最上位の中間層のサイズ
-					importance_l1_size = 100,
-					importance_l2_size = 50,
+					importance_l1_size = 200,
+					importance_l2_size = 100,
 					L2_reg = np.exp(-2))
 
 train_params = dict(num_iters = 100,
@@ -56,14 +56,9 @@ class Main(Chain):
 		super(Main, self).__init__(
 			build_ecfp = Finger_print.ECFP(model_params),
 			build_fcfp = Finger_print.FCFP(model_params),
-			ecfp_attension_1 = L.Linear(model_params['fp_length'], model_params['importance_l1_size']),
-			fcfp_attension_1 = L.Linear(model_params['fp_length'], model_params['importance_l1_size']),
-			ecfp_attension_2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size']),
-			fcfp_attension_2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size']),
-			#ecfp_attension_3 = L.Linear(model_params['importance_l2_size'],1),
-			#fcfp_attension_3 = L.Linear(model_params['importance_l2_size'],1),
-			ecfp_attension_3 = L.Linear(model_params['importance_l2_size'],model_params['fp_length']),
-			fcfp_attension_3 = L.Linear(model_params['importance_l2_size'],model_params['fp_length']),
+			attension_layer1 = L.Linear(2 * model_params['fp_length'], model_params['importance_l1_size']),
+			attension_layer2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size']),
+			attension_layer3 = L.Linear(model_params['importance_l2_size'],2 * model_params['fp_length']),
 			dnn = Deep_neural_network.DNN(model_params),
 		)
 	
@@ -76,17 +71,22 @@ class Main(Chain):
 		x = Variable(x)
 		ecfp = self.build_ecfp(x)
 		fcfp = self.build_fcfp(x)
-		#ecfp_beta = self.ecfp_attension(ecfp)
-		#fcfp_beta = self.ecfp_attension(fcfp)
-		ecfp_beta = self.ecfp_attension_1(ecfp)
-		fcfp_beta = self.fcfp_attension_1(fcfp)
-		ecfp_beta = self.ecfp_attension_2(ecfp_beta)
-		fcfp_beta = self.fcfp_attension_2(fcfp_beta)
-		ecfp_beta = self.ecfp_attension_3(ecfp_beta)
-		fcfp_beta = self.fcfp_attension_3(fcfp_beta)
+		ecfp_fcfp = F.concat((ecfp,fcfp),axis=1)
+
+		h1 = self.attension_layer1(ecfp_fcfp)
+		h2 = self.attension_layer2(h1)
+		attention_vec = self.attension_layer3(h2)
+			
 		
-		print("ecfp_beta : ",ecfp_beta[0])
-		print("F.exp(ecfp_beta) : ",F.exp(ecfp_beta[0]))
+		softmax_frac = F.sum(F.exp(attention_vec))
+		print("frac", attention_vec[0] / softmax_frac)
+		#attention_vec = F.exp(attention_vec) / softmax_frac
+		#print(attention_vec)
+		import pdb;pdb.set_trace()
+
+		
+		print("ecfp_beta : ",ecfc_beta[0])
+		print("F.exp(ecfp_beta) : ",F.exp(ecfc_beta[0]))
 		ecfp_alpha = F.exp(ecfp_beta) / (F.exp(ecfp_beta) + F.exp(fcfp_beta))
 		fcfp_alpha = F.exp(fcfp_beta) / (F.exp(ecfp_beta) + F.exp(fcfp_beta))
 		print("ecfp : ",ecfp.shape)
@@ -175,14 +175,11 @@ def main():
 		optimizer = optimizers.Adam()
 		optimizer.setup(NNFP)
 
-		#gpu_device = 0
-		#cuda.get_device(gpu_device).use()
-		#NNFP.to_gpu(gpu_device)
 		'''Learn'''
 		trained_NNFP, conv_training_curve, undo_norm = \
 			train_nn(NNFP, 
 					 x_trains, y_trains,  
-					 args.epochs, 
+					 args.epochs,
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
 		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
