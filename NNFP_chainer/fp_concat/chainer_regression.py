@@ -1,6 +1,7 @@
 #coding: utf-8
 import math
 import argparse
+import copy
 import numpy as np
 import numpy.random as npr
 #import cupy as np #GPUを使うためのnumpy
@@ -53,12 +54,13 @@ train_params = dict(num_iters = 100,
 	
 class Main(Chain):
 	def __init__(self, model_params):
+		initializer = chainer.initializers.HeNormal()
 		super(Main, self).__init__(
 			build_ecfp = Finger_print.ECFP(model_params),
 			build_fcfp = Finger_print.FCFP(model_params),
-			attension_layer1 = L.Linear(2 * model_params['fp_length'], model_params['importance_l1_size']),
-			attension_layer2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size']),
-			attension_layer3 = L.Linear(model_params['importance_l2_size'],2 * model_params['fp_length']),
+			attension_layer1 = L.Linear(2 * model_params['fp_length'], model_params['importance_l1_size'],initialW=initializer),
+			attension_layer2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size'],initialW=initializer),
+			attension_layer3 = L.Linear(model_params['importance_l2_size'], 2 * model_params['fp_length'],initialW=initializer),
 			dnn = Deep_neural_network.DNN(model_params),
 		)
 	
@@ -76,27 +78,23 @@ class Main(Chain):
 		h1 = self.attension_layer1(ecfp_fcfp)
 		h2 = self.attension_layer2(h1)
 		attention_vec = self.attension_layer3(h2)
-			
 		
-		softmax_frac = F.sum(F.exp(attention_vec))
-		print("frac", attention_vec[0] / softmax_frac)
-		#attention_vec = F.exp(attention_vec) / softmax_frac
-		#print(attention_vec)
-		import pdb;pdb.set_trace()
 
-		
-		print("ecfp_beta : ",ecfc_beta[0])
-		print("F.exp(ecfp_beta) : ",F.exp(ecfc_beta[0]))
-		ecfp_alpha = F.exp(ecfp_beta) / (F.exp(ecfp_beta) + F.exp(fcfp_beta))
-		fcfp_alpha = F.exp(fcfp_beta) / (F.exp(ecfp_beta) + F.exp(fcfp_beta))
-		print("ecfp : ",ecfp.shape)
-		print("ecfp_alpha : ",ecfp.shape)
-		attension_ecfp = ecfp * ecfp_alpha
-		attension_fcfp = fcfp * fcfp_alpha
-		print("ecfp_alpha : ", F.mean(ecfp_alpha))
-		print("fcfp_alpha : ", F.mean(fcfp_alpha))
+		attention_vec_softmaxed = Variable(np.empty((attention_vec.shape), dtype=np.float32))
+		for i in range(len(attention_vec)):
+			attention_sum = F.sum(F.exp(attention_vec[i]))
+			attention_sum_broadcasted = F.broadcast_to(attention_sum, (len(attention_vec[0]),))
+			print("type ", attention_sum_broadcasted.dtype)
+			print("shape ", attention_vec[i].shape)
+			print("shape ", attention_vec_softmaxed[i].shape)
+			attention_vec_softmaxed[i] = F.copy(attention_vec_softmaxed[i], F.exp(attention_vec[i]) /  attention_sum_broadcasted)
 
-		pred = self.dnn(attension_fcfp + attension_ecfp)
+		#softmax_frac_broadcast = F.broadcast_to(softmax_frac, (len(attention_vec),len(attention_vec[0])))
+		#attention_vec = F.exp(attention_vec) / softmax_frac_broadcast
+
+		attentioned_ecfc = ecfp_fcfp * attention_vec
+
+		pred = self.dnn(attentioned_ecfc)
 		return pred
 
 	def mse(self, x, y, undo_norm):

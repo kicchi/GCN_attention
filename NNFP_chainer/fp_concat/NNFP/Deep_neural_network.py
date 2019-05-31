@@ -8,9 +8,10 @@ import chainer.links as L
 
 class DNN(Chain):
 	def __init__(self, model_params):
+		initializer = chainer.initializers.HeNormal()
 		super(DNN, self).__init__(
-			l1 = L.Linear(model_params['fp_length'],model_params['h1_size']),
-			l2 = L.Linear(model_params['h1_size'],1),
+			l1 = L.Linear(model_params['h1_size'],initialW=initializer),
+			l2 = L.Linear(model_params['h1_size'],1,initialW=initializer),
 			bnorm1 = L.BatchNormalization(model_params['h1_size']),
 		)
 

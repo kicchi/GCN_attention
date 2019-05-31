@@ -1,6 +1,5 @@
 EPOCHS=1000
-BATCH_SIZE=128
-SAVEDIR=2019\_01\_08
+SAVEDIR=2019\_05\_30
 
 echo START
 echo `date '+%y/%m/%d %H:%M:%S'`
@@ -54,11 +53,24 @@ echo `date '+%y/%m/%d %H:%M:%S'`
 #regression_attention
 #python regression_attention/chainer_regression.py delaney.csv --epochs $EPOCHS --batch_size $BATCH_SIZE > $SAVEDIR/ATTENTION_delaney.txt
 #echo Exit ATTENTION_delaney
-echo `date '+%y/%m/%d %H:%M:%S'`
-python regression_attention/chainer_regression.py malaria.csv --epochs $EPOCHS --batch_size $BATCH_SIZE > $SAVEDIR/ATTENTION_malaria.txt  
-echo Exit ATTENTION_malaria
-echo `date '+%y/%m/%d %H:%M:%S'`
-python regression_attention/chainer_regression.py     cep.csv --epochs $EPOCHS --batch_size $BATCH_SIZE > $SAVEDIR/ATTENTION_cep.txt      
-echo Exit ATTENTION_cep
-echo `date '+%y/%m/%d %H:%M:%S'`
+#echo `date '+%y/%m/%d %H:%M:%S'`
+#python regression_attention/chainer_regression.py malaria.csv --epochs $EPOCHS --batch_size $BATCH_SIZE > $SAVEDIR/ATTENTION_malaria.txt  
+#echo Exit ATTENTION_malaria
+#echo `date '+%y/%m/%d %H:%M:%S'`
+#python regression_attention/chainer_regression.py     cep.csv --epochs $EPOCHS --batch_size $BATCH_SIZE > $SAVEDIR/ATTENTION_cep.txt      
+#echo Exit ATTENTION_cep
+#echo `date '+%y/%m/%d %H:%M:%S'`
 
+#fp_cancat
+for i in `seq 0 2`
+do
+python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS > $SAVEDIR/fp_concat_delaney_$i.txt
+echo Exit fp_cancat
+echo `date '+%y/%m/%d %H:%M:%S'`
+python fp_concat/chainer_regression.py --input_file malaria --epochs $EPOCHS > $SAVEDIR/fp_concat_malaria_$i.txt
+echo Exit fp_cancat_malaria
+echo `date '+%y/%m/%d %H:%M:%S'`
+python fp_concat/chainer_regression.py --input_file cwp --epochs $EPOCHS > $SAVEDIR/fp_concat_cep_$i.txt
+echo Exit fp_cancat_cep
+echo `date '+%y/%m/%d %H:%M:%S'`
+done

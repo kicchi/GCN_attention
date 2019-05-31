@@ -1,2 +1,3 @@
-#python delaney_chainer_regression.py > delaney_output.txt
-python malaria_chainer_regression.py > malaria_output.txt
+ python chainer_regression.py --input_file delaney --epochs 1000 > fp_cancat_cep.txt
+ python chainer_regression.py --input_file malaria --epochs 1000 > fp_cancat_cep.txt
+ python chainer_regression.py --input_file cep --epochs 1000 > fp_cancat_cep.txt
