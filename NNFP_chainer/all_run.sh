@@ -1,5 +1,5 @@
 EPOCHS=1000
-SAVEDIR=2019\_05\_30
+SAVEDIR=2019\_06\_07
 
 echo START
 echo `date '+%y/%m/%d %H:%M:%S'`
@@ -64,13 +64,13 @@ echo `date '+%y/%m/%d %H:%M:%S'`
 #fp_cancat
 for i in `seq 0 2`
 do
-python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS > $SAVEDIR/fp_concat_delaney_$i.txt
+#python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS > $SAVEDIR/fp_concat_delaney_$i.txt
 echo Exit fp_cancat
 echo `date '+%y/%m/%d %H:%M:%S'`
-python fp_concat/chainer_regression.py --input_file malaria --epochs $EPOCHS > $SAVEDIR/fp_concat_malaria_$i.txt
+#python fp_concat/chainer_regression.py --input_file malaria --epochs $EPOCHS > $SAVEDIR/fp_concat_malaria_$i.txt
 echo Exit fp_cancat_malaria
 echo `date '+%y/%m/%d %H:%M:%S'`
-python fp_concat/chainer_regression.py --input_file cwp --epochs $EPOCHS > $SAVEDIR/fp_concat_cep_$i.txt
+python fp_concat/chainer_regression.py --input_file cep --epochs $EPOCHS > $SAVEDIR/fp_concat_cep_$i.txt
 echo Exit fp_cancat_cep
 echo `date '+%y/%m/%d %H:%M:%S'`
 done
