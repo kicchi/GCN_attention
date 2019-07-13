@@ -38,12 +38,12 @@ malaria_params = {'target_name' : 'activity',
 			 	 'val' : 197,
 			 	 'test' : 100}
 
-model_params = dict(fp_length = 50,      
+model_params = dict(fp_length = 25,      
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
 					conv_width = 20,    #必要なパラメータはこれだけ（？）
 					h1_size = 100,      #最上位の中間層のサイズ
-					importance_l1_size = 200,
-					importance_l2_size = 100,
+					importance_l1_size = 100,
+					importance_l2_size = 50,
 					L2_reg = np.exp(-2))
 
 train_params = dict(num_iters = 100,
