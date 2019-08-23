@@ -1,0 +1,40 @@
+Loading data...
+Starting neural fingerprint experiment...
+Iteration 0 loss 0.6044069639903572 train RMSE 1.8211054568771543
+Validation RMSE 0 : 1.6723514484070434
+Iteration 100 loss 0.30228380698237933 train RMSE 1.170454868676864
+Validation RMSE 100 : 1.1149069711339785
+Iteration 200 loss 0.3130295796158894 train RMSE 0.8885945716184678
+Validation RMSE 200 : 1.0921658624298458
+Iteration 300 loss nan train RMSE nan
+Validation RMSE 300 : nan
+Iteration 400 loss nan train RMSE nan
+Validation RMSE 400 : nan
+Iteration 500 loss nan train RMSE nan
+Validation RMSE 500 : nan
+Iteration 600 loss nan train RMSE nan
+Validation RMSE 600 : nan
+Iteration 700 loss nan train RMSE nan
+Validation RMSE 700 : nan
+Iteration 800 loss nan train RMSE nan
+Validation RMSE 800 : nan
+Iteration 900 loss nan train RMSE nan
+Validation RMSE 900 : nan
+Iteration 1000 loss nan train RMSE nan
+Validation RMSE 1000 : nan
+Iteration 1100 loss nan train RMSE nan
+Validation RMSE 1100 : nan
+Iteration 1200 loss nan train RMSE nan
+Validation RMSE 1200 : nan
+Iteration 1300 loss nan train RMSE nan
+Validation RMSE 1300 : nan
+Iteration 1400 loss nan train RMSE nan
+Validation RMSE 1400 : nan
+Iteration 1500 loss nan train RMSE nan
+Validation RMSE 1500 : nan
+Iteration 1600 loss nan train RMSE nan
+Validation RMSE 1600 : nan
+Iteration 1700 loss nan train RMSE nan
+Validation RMSE 1700 : nan
+Iteration 1800 loss nan train RMSE nan
+Validation RMSE 1800 : nan

@@ -1,5 +1,5 @@
 EPOCHS=2000
-SAVEDIR=2019\_07\_01
+SAVEDIR=2019\_08\_22
 
 echo START
 echo `date '+%y/%m/%d %H:%M:%S'`
@@ -62,15 +62,46 @@ echo `date '+%y/%m/%d %H:%M:%S'`
 #echo `date '+%y/%m/%d %H:%M:%S'`
 
 #fp_cancat
+#for i in `seq 0 2`
+#do
+#	python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS > $SAVEDIR/fp_concat_delaney_$i.txt
+#	echo Exit fp_cancat_delaney
+#	echo `date '+%y/%m/%d %H:%M:%S'`
+#	python fp_concat/chainer_regression.py --input_file malaria --epochs $EPOCHS > $SAVEDIR/fp_concat_malaria_$i.txt
+#	echo Exit fp_cancat_malaria
+#echo `date '+%y/%m/%d %H:%M:%S'`
+#	python fp_concat/chainer_regression.py --input_file cep --epochs $EPOCHS > $SAVEDIR/fp_concat_cep_$i.txt
+#	echo Exit fp_cancat_cep
+#	echo `date '+%y/%m/%d %H:%M:%S'`
+#done
+
+#fp_concat fp_length
+#for i in 16 32 50 64 100 128
+#do
+#	python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS --fp_length $i > $SAVEDIR/fp_concat_delaney_fp_length_$i.txt
+#	echo Exit fp length $i
+#	echo `date '+%y/%m/%d %H:%M:%S'`
+#done
+
+#input_attention
+#for i in `seq 0 2`
+#do
+#python input_attention/chainer_regression_ecfp.py --input_file delaney.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_delaney_$i.txt
+#echo Exit ECFP_INPUT_ATTENTION_delaney  `date '+%y/%m/%d %H:%M:%S'`
+#done
+#for i in `seq 0 2`
+#do
+#python input_attention/chainer_regression_ecfp.py --input_file malaria.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_malaria_$i.txt  
+#echo Exit ECFP_INPUT_ATTENTION_malaria  `date '+%y/%m/%d %H:%M:%S'`
+#done
+
 for i in `seq 0 2`
 do
-	python fp_concat/chainer_regression.py --input_file delaney --epochs $EPOCHS > $SAVEDIR/fp_concat_delaney_$i.txt
-	echo Exit fp_cancat_delaney
-	echo `date '+%y/%m/%d %H:%M:%S'`
-	python fp_concat/chainer_regression.py --input_file malaria --epochs $EPOCHS > $SAVEDIR/fp_concat_malaria_$i.txt
-	echo Exit fp_cancat_malaria
-echo `date '+%y/%m/%d %H:%M:%S'`
-	python fp_concat/chainer_regression.py --input_file cep --epochs $EPOCHS > $SAVEDIR/fp_concat_cep_$i.txt
-	echo Exit fp_cancat_cep
-	echo `date '+%y/%m/%d %H:%M:%S'`
+python input_attention/chainer_regression_fcfp.py --input_file delaney.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_delaney_$i.txt
+echo Exit FCFP_INPUT_ATTENTION_delaney `date '+%y/%m/%d %H:%M:%S'`
+done
+for i in `seq 0 2`
+do
+python input_attention/chainer_regression_fcfp.py --input_file malaria.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_malaria_$i.txt  
+echo Exit FCFP_INPUT_ATTENTION_malaria  `date '+%y/%m/%d %H:%M:%S'`
 done

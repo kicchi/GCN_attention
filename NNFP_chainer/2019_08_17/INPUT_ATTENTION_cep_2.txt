@@ -1,0 +1,6 @@
+Loading data...
+Starting neural fingerprint experiment...
+Iteration 0 loss 0.6457719824989194 train RMSE 1.9087293166843007
+Validation RMSE 0 : 1.7649998866397292
+Neural test RMSE 1.8782407093425073
+time :  492.73244619369507

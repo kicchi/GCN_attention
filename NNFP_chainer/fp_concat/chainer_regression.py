@@ -138,7 +138,9 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--input_file",type=str)
 	parser.add_argument("--epochs", type=int)
+	parser.add_argument("--fp_length", type=int)
 	args = parser.parse_args()
+	model_params['fp_length'] = args.fp_length
 
 	task_params = eval(args.input_file.split(".csv")[0]+'_params')
 	ALL_TIME = time.time()
