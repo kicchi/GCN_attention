@@ -1,0 +1,1 @@
+FCFPのbinaryをone-hotにした

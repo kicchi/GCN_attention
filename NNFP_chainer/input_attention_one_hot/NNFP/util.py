@@ -117,6 +117,12 @@ def one_of_k_encoding_unk(x, allowable_set):
         x = allowable_set[-1]
     return [x == s for s in allowable_set]
 
+def one_of_TF_encoding(TorF):
+	if TorF:
+		return [1,0]
+	else:
+		return [0,1]
+
 def dropout(weights, fraction, random_state):
     """Randomly sets fraction of weights to zero, and increases the rest
         such that the expected activation is the same."""

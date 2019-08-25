@@ -2,7 +2,7 @@ import numpy as np
 #import cupy as np 
 from rdkit import Chem
 from rdkit.Chem import AllChem
-from .util import one_of_k_encoding, one_of_k_encoding_unk
+from .util import one_of_k_encoding, one_of_k_encoding_unk, one_of_TF_encoding
 
 def atom_features_from_ecfp(atom):
     return np.array(one_of_k_encoding_unk(atom.GetSymbol(),
@@ -14,17 +14,28 @@ def atom_features_from_ecfp(atom):
                     one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5]) +
                     one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4]) +
                     one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5]) +
-                    [atom.GetIsAromatic()]
+					one_of_TF_encoding(atom.GetIsAromatic())
 					)
 
 def atom_features_from_fcfp(mol):
 	com = AllChem.RemoveHs(mol) 
 	gl = AllChem.GetFeatureInvariants(com)
 	def to_bin(x):
-		ff = (list(map(int, list(format(x, 'b').zfill(6))))) #FCFP has 6 features
+		f1 = format(x, 'b').zfill(6)
+		f2 = map(int, list(f1))
+		f3 = list(f2)
+		def to_TF(f):
+			arr = []
+			for y in f:
+				if y:
+					arr += [1,0]
+				else:
+					arr += [0,1]
+			return arr
+		f4 = to_TF(f3)
+		ff = list(f4) #FCFP has 6 features
 		return ff
 	gl = list(map(to_bin, gl))
-
 
 	
 	return np.array(gl)

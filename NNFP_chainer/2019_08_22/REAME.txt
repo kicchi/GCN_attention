@@ -1,0 +1,1 @@
+ECFPのbinaryをone-hotにした

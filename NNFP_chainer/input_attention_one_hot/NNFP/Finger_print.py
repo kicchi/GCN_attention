@@ -142,7 +142,7 @@ class ECFP(Chain): #fp_switch: ecfp is False
 				attention_layer_output = attention_layer2(h1)
 				attention_layer_output = F.softmax(attention_layer_output)
 				print(attention_layer_output)
-				attention_layer_output = F.repeat(attention_layer_output,(44,6,5,6,1),axis=1)
+				attention_layer_output = F.repeat(attention_layer_output,(44,6,5,6,2),axis=1)
 
 				return masked_weights * attention_layer_output
 			attentioned_atom_features = attention_layer(masked_weights)
@@ -216,7 +216,7 @@ class FCFP(Chain): #fp_switch: fcfp is True
 				attention_layer_output = attention_layer2(h1)
 				attention_layer_output = F.softmax(attention_layer_output)
 				print(attention_layer_output)
-				attention_layer_output = F.repeat(attention_layer_output,(1,1,1,1,1,1),axis=1)
+				attention_layer_output = F.repeat(attention_layer_output,(2,2,2,2,2,2),axis=1)
 				return masked_weights * attention_layer_output
 			attentioned_atom_features = attention_layer(masked_weights)
 			atom_features = attentioned_atom_features
