@@ -1,5 +1,5 @@
 EPOCHS=2000
-SAVEDIR=2019\_08\_23
+SAVEDIR=2019\_08\_26
 
 echo START
 echo `date '+%y/%m/%d %H:%M:%S'`
@@ -97,11 +97,7 @@ echo `date '+%y/%m/%d %H:%M:%S'`
 
 for i in `seq 0 2`
 do
-python input_attention_one_hot/chainer_regression_fcfp.py --input_file delaney.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_delaney_$i.txt
-echo Exit FCFP_INPUT_ATTENTION_delaney `date '+%y/%m/%d %H:%M:%S'`
-done
-for i in `seq 0 2`
-do
-python input_attention_one_hot/chainer_regression_fcfp.py --input_file malaria.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_malaria_$i.txt  
-echo Exit FCFP_INPUT_ATTENTION_malaria  `date '+%y/%m/%d %H:%M:%S'`
+python input_attention_one_hot_remove/chainer_regression_ecfp.py --input_file delaney.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_delaney_ecfp_$i.txt
+#python input_attention_one_hot_remove/chainer_regression_fcfp.py --input_file malaria.csv --epochs $EPOCHS > $SAVEDIR/INPUT_ATTENTION_malaria_fcfp_$i.txt  
+echo Exit $i loop  `date '+%y/%m/%d %H:%M:%S'`
 done
