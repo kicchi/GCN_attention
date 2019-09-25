@@ -99,9 +99,14 @@ def build_weights(self, model_params, fp_switch):
 	setattr(self, 'input_weights', L.Linear(None, num_atom_features,initialW=initializer))
 
 	'''attention layer'''
-	#hidden layer = 5
-	setattr(self, 'attention_layer_input', L.Linear(None, 10, initialW=initializer))	
-	setattr(self, 'attention_layer_output', L.Linear(10, num_one_hot, initialW=initializer))	
+	if fp_switch:
+		setattr(self, 'attention_layer_input', L.Linear(None, 10, initialW=initializer))	
+		setattr(self, 'attention_layer_middle', L.Linear(10, 5, initialW=initializer))	
+		setattr(self, 'attention_layer_output', L.Linear(5, num_one_hot, initialW=initializer))	
+	else:
+		setattr(self, 'attention_layer_input', L.Linear(None, 50, initialW=initializer))	
+		setattr(self, 'attention_layer_middle', L.Linear(50, 30, initialW=initializer))	
+		setattr(self, 'attention_layer_output', L.Linear(30, num_one_hot, initialW=initializer))	
 
 
 class ECFP(Chain): #fp_switch: ecfp is False
@@ -133,19 +138,21 @@ class ECFP(Chain): #fp_switch: ecfp is False
 			bond_features = bool_to_float32(bond_features)
 			features_self_weights = eval("self.input_weights")
 			attention_layer1 = eval("self.attention_layer_input")
-			attention_layer2 = eval("self.attention_layer_output")
+			attention_layer2 = eval("self.attention_layer_middle")
+			attention_layer3 = eval("self.attention_layer_output")
 			features_matrix = features_self_weights(atom_features)
 			masked_weights = features_matrix * atom_features
 
 			def attention_layer(masked_weights):
 				h1 = attention_layer1(masked_weights)
-				attention_layer_output = attention_layer2(h1)
+				h2 = attention_layer2(h1)
+				attention_layer_output = attention_layer3(h2)
 				attention_layer_output = F.softmax(attention_layer_output)
-				print(attention_layer_output)
-				attention_layer_output = F.repeat(attention_layer_output,(44,6,5,6,2),axis=1)
+				#print(attention_layer_output)
+				rep_attention_layer_output = F.repeat(attention_layer_output,(44,6,5,6,2),axis=1)
 
-				return masked_weights * attention_layer_output
-			attentioned_atom_features = attention_layer(masked_weights)
+				return masked_weights * rep_attention_layer_output, attention_layer_output
+			attentioned_atom_features, attention_layer_output = attention_layer(masked_weights)
 			atom_features = attentioned_atom_features
 
 			all_layer_fps = []
@@ -166,14 +173,14 @@ class ECFP(Chain): #fp_switch: ecfp is False
 				#atom_features = atom_features
 
 			write_to_fingerprint(self, atom_features, num_layers)
-			return sum(all_layer_fps), atom_activations, array_rep
+			return sum(all_layer_fps), atom_activations, array_rep, attention_layer_output
 	
 		def output_layer_fun(self, smiles):
-			output, _, _ = output_layer_fun_and_atom_activations(self, smiles)
-			return output
+			output, _, _, attention_layer_output  = output_layer_fun_and_atom_activations(self, smiles)
+			return output, attention_layer_output
 	
 		def compute_atom_activations(self, smiles):
-			_, atom_activations, array_rep = output_layer_fun_and_atom_activations(smiles)
+			_, atom_activations, array_rep, _ = output_layer_fun_and_atom_activations(smiles)
 			return atom_activations, array_rep
 		conv_fp_func = output_layer_fun
 		return (conv_fp_func(self, smiles))
@@ -207,18 +214,21 @@ class FCFP(Chain): #fp_switch: fcfp is True
 			bond_features = bool_to_float32(bond_features)
 			features_self_weights = eval("self.input_weights")
 			attention_layer1 = eval("self.attention_layer_input")
-			attention_layer2 = eval("self.attention_layer_output")
+			attention_layer2 = eval("self.attention_layer_middle")
+			attention_layer3 = eval("self.attention_layer_output")
 			features_matrix = features_self_weights(atom_features)
 			masked_weights = features_matrix * atom_features
 
 			def attention_layer(masked_weights):
 				h1 = attention_layer1(masked_weights)
-				attention_layer_output = attention_layer2(h1)
+				h2 = attention_layer2(h1)
+				attention_layer_output = attention_layer3(h2)
 				attention_layer_output = F.softmax(attention_layer_output)
-				print(attention_layer_output)
-				attention_layer_output = F.repeat(attention_layer_output,(2,2,2,2,2,2),axis=1)
-				return masked_weights * attention_layer_output
-			attentioned_atom_features = attention_layer(masked_weights)
+				#print(attention_layer_output)
+				rep_attention_layer_output = attention_layer_output
+				attention_layer_output = F.repeat(rep_attention_layer_output,(1,1,1,1,1,1),axis=1)
+				return masked_weights * attention_layer_output, attention_layer_output
+			attentioned_atom_features, attention_layer_output = attention_layer(masked_weights)
 			atom_features = attentioned_atom_features
 
 			all_layer_fps = []
@@ -237,11 +247,11 @@ class FCFP(Chain): #fp_switch: fcfp is True
 				atom_features = update_layer(self, layer, atom_features, bond_features, array_rep, normalize=False)
 
 			write_to_fingerprint(self, atom_features, num_layers)
-			return sum(all_layer_fps), atom_activations, array_rep
+			return sum(all_layer_fps), atom_activations, array_rep, attention_layer_output
 	
 		def output_layer_fun(self, smiles):
-			output, _, _ = output_layer_fun_and_atom_activations(self, smiles)
-			return output
+			output, _, _,attention_layer_output = output_layer_fun_and_atom_activations(self, smiles)
+			return output, attention_layer_output
 	
 		def compute_atom_activations(self, smiles):
 			_, atom_activations, array_rep = output_layer_fun_and_atom_activations(smiles)

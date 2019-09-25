@@ -8,6 +8,7 @@ import numpy.random as npr
 import chainer 
 from chainer import cuda, Function, Variable, optimizers
 from chainer import Link, Chain
+from chainer import serializers
 import chainer.functions as F
 import chainer.links as L
 import time
@@ -170,6 +171,8 @@ def main():
 					 args.epochs,
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
+		save_name = "fp_concat_" + args.input_file + "_fp_length_" + str(args.fp_length) + ".npz"
+		serializers.save_npz(save_name, trained_NNFP)
 		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
 
 	print("Starting neural fingerprint experiment...")

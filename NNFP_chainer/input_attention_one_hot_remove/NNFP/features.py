@@ -12,8 +12,8 @@ def atom_features_from_ecfp(atom):
                                        'li', 'ge', 'cu', 'au', 'ni', 'cd', 'in', 'mn', 'zr',
                                        'cr', 'pt', 'hg', 'pb', 'unknown']) +
                     one_of_k_encoding(atom.GetDegree(), [0, 1, 2, 3, 4, 5]) +
-                    one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4]) +
-                    #one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5]) +
+                    #one_of_k_encoding_unk(atom.GetTotalNumHs(), [0, 1, 2, 3, 4]) +
+                    one_of_k_encoding_unk(atom.GetImplicitValence(), [0, 1, 2, 3, 4, 5]) +
 					one_of_TF_encoding(atom.GetIsAromatic())
 					)
 
@@ -34,7 +34,7 @@ def atom_features_from_fcfp(mol):
 			return arr
 		f4 = to_TF(f3)
 		ff = list(f4) #FCFP has 6 features
-		del ff[1:3]
+		del ff[0:2]
 		return ff
 	gl = list(map(to_bin, gl))
 

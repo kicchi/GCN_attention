@@ -7,6 +7,7 @@ import numpy.random as npr
 import chainer 
 from chainer import cuda, Function, Variable, optimizers
 from chainer import Link, Chain
+from chainer import serializers
 import chainer.functions as F
 import chainer.links as L
 import time
@@ -26,11 +27,11 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
-			 	 'train' : 20000,
-			 	 #'train' : 1000,
-			 	 'val' : 250,
-			 	 'test' : 5000}
-			 	 #'test' : 100}
+			 	 #'train' : 20000,
+			 	 'train' : 2000,
+			 	 'val' : 200,
+			 	 #'test' : 5000}
+			 	 'test' : 200}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
@@ -186,6 +187,8 @@ def main():
 					 args.epochs, 
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
+		save_name = "input-attention-ecfp-delaney-top-remove.npz"
+		serializers.save_npz(save_name, trained_NNFP)
 		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
 
 	print("Starting neural fingerprint experiment...")

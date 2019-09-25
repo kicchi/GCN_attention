@@ -1,0 +1,2 @@
+input attention remove のmalaria のいいやつremove
+いらないやつはサーバーのどっかーで

@@ -17,6 +17,29 @@ def atom_features_from_ecfp(atom):
 					one_of_TF_encoding(atom.GetIsAromatic())
 					)
 
+#def atom_features_from_fcfp(mol):
+#	com = AllChem.RemoveHs(mol) 
+#	gl = AllChem.GetFeatureInvariants(com)
+#	def to_bin(x):
+#		f1 = format(x, 'b').zfill(6)
+#		f2 = map(int, list(f1))
+#		f3 = list(f2)
+#		def to_TF(f):
+#			arr = []
+#			for y in f:
+#				if y:
+#					arr += [1,-1]
+#				else:
+#					arr += [-1,1]
+#			return arr
+#		f4 = to_TF(f3)
+#		ff = list(f4) #FCFP has 6 features
+#		return ff
+#	gl = list(map(to_bin, gl))
+#
+#	
+#	return np.array(gl)
+
 def atom_features_from_fcfp(mol):
 	com = AllChem.RemoveHs(mol) 
 	gl = AllChem.GetFeatureInvariants(com)
@@ -28,9 +51,9 @@ def atom_features_from_fcfp(mol):
 			arr = []
 			for y in f:
 				if y:
-					arr += [1,0]
+					arr += [1]
 				else:
-					arr += [0,1]
+					arr += [-1]
 			return arr
 		f4 = to_TF(f3)
 		ff = list(f4) #FCFP has 6 features
@@ -39,7 +62,6 @@ def atom_features_from_fcfp(mol):
 
 	
 	return np.array(gl)
-
 def bond_features(bond):
     bt = bond.GetBondType()
     return np.array([bt == Chem.rdchem.BondType.SINGLE,
