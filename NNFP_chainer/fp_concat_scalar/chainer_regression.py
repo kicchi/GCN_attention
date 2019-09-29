@@ -30,16 +30,16 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
-			 	 'train' : 20000,
-			 	 #'train' : 1000,
+			 	 #'train' : 20000,
+			 	 'train' : 1000,
 			 	 'val' : 250,
-			 	 'test' : 5000}
-			 	 #'test' : 100}
+			 	 #'test' : 5000}
+			 	 'test' : 200}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
-			 	 'train' : 1000,
-			 	 'val' : 197,
-			 	 'test' : 100}
+			 	 'train' : 200,
+			 	 'val' : 19,
+			 	 'test' : 50}
 
 model_params = dict(fp_length = 25,      
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
@@ -177,7 +177,8 @@ def main():
 					 args.epochs,
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
-		save_name = "fp_concat_" + args.input_file + "_fp_length_" + str(args.fp_length) + "_" + str(args.i) + ".npz"
+		#save_name = "fp_concat_" + args.input_file + "_fp_length_" + str(args.fp_length) + "_" + str(args.i) + ".npz"
+		save_name = "test.npz"
 		serializers.save_npz(save_name, trained_NNFP)
 		mse, _, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
 		return math.sqrt(mse._data[0]), conv_training_curve
@@ -218,6 +219,8 @@ def main():
 		pylab.box(False)
 		#plt.legend(loc='upper right', bbox_to_anchor=(0.2,1,0.15,0), borderaxespad=0.)
 		plt.show()
+		#plt.savefig("fp_scalar_" + args.input_file + ".png")
+		plt.savefig("test.png")
 
 	
 	print("Neural test RMSE", test_loss_neural)

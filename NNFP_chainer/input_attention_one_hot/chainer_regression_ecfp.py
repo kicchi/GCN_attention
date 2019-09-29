@@ -30,11 +30,11 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
-			 	 'train' : 20000,
-			 	 #'train' : 1000,
-			 	 'val' : 250,
-			 	 'test' : 5000}
-			 	 #'test' : 100}
+			 	 #'train' : 20000,
+			 	 'train' : 2000,
+			 	 'val' : 200,
+			 	 #'test' : 5000}
+			 	 'test' : 200}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
@@ -74,7 +74,7 @@ class Main(Chain):
 	
 	def __call__(self, x, y):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = self.prediction(x)
+		pred, _ = self.prediction(x)
 		return F.mean_squared_error(pred, y)
 
 	def prediction(self, x):
@@ -103,12 +103,13 @@ class Main(Chain):
 
 		#pred = self.dnn(attension_fcfp + attension_ecfp)
 		pred = self.dnn(ecfp)
-		return pred
+		return pred, input_attention
 
 	def mse(self, x, y, undo_norm):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = undo_norm(self.prediction(x))
-		return F.mean_squared_error(pred, y)
+		pred, input_attention = self.prediction(x)
+		pred = undo_norm(pred)
+		return F.mean_squared_error(pred, y), input_attention
 	
 def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=128, seed=0,
 				validation_smiles=None, validation_raw_targets=None):
@@ -138,13 +139,13 @@ def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=
 		#print "epoch ", epoch, "loss", loss._data[0]
 		#print "epoch ", epoch, "loss", loss._data[0]
 		if epoch % 100 == 0:
-			train_preds = model.mse(train_smiles, train_raw_targets, undo_norm)
+			train_preds,_ = model.mse(train_smiles, train_raw_targets, undo_norm)
 			cur_loss = loss._data[0]
 			training_curve.append(cur_loss)
 			print("Iteration", epoch, "loss", math.sqrt(cur_loss), \
 				"train RMSE", math.sqrt((train_preds._data[0])))
 			if validation_smiles is not None:
-				validation_preds = model.mse(validation_smiles, validation_raw_targets, undo_norm)
+				validation_preds,_ = model.mse(validation_smiles, validation_raw_targets, undo_norm)
 				print("Validation RMSE", epoch, ":", math.sqrt((validation_preds._data[0])))
 		#print("1 EPOCH TIME : ", time.time() - epoch_time)
 		#print loss
@@ -192,42 +193,46 @@ def main():
 					 args.epochs, 
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
-		save_name = "input_attention_one_hot_delaney.npz"
+		#save_name = "input_attention_one_hot_cep.npz"
+		save_name = "test.npz"
 		serializers.save_npz(save_name, trained_NNFP)
-		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
+		mse, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), conv_training_curve
 
 	def load_model_experiment():
 		'''Initialize model'''
 		trained_NNFP = Main(model_params) 
 		serializers.load_npz(args.load_npz, trained_NNFP)	
 		_, undo_norm = normalize_array(y_tests)
-		mse, attention_ecfp, attention_fcfp = trained_NNFP.mse(x_tests, y_tests, undo_norm)
-		return math.sqrt(mse._data[0]), attention_ecfp, attention_fcfp
+		mse, input_attention = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), input_attention
 
 	print("Starting neural fingerprint experiment...")
 	if args.load_npz == None:
 		test_loss_neural, conv_training_curve = run_conv_experiment()
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
-		x_ecfp = attention_ecfp._data[0]
+		x_ecfp = input_attention._data[0]
 		y = [0] * len(x_ecfp)
-
-		fig,ax=plt.subplots(figsize=(10,10))
-		fig.set_figheight(1)
-		ax.tick_params(labelbottom=True, bottom=False)
-		ax.tick_params(labelleft=False, left=False)
+		attentions = np.split(x_ecfp,5,1)
 
 		xmin, xmax = 0, 1
-		plt.tight_layout()
-		plt.scatter(x_ecfp, y, c="red", marker="o",alpha=0.3)
-		plt.scatter(x_fcfp, y, c="blue", marker="o",alpha=0.3)
-		plt.hlines(y=0,xmin=xmin,xmax=xmax)
-		plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
-		plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
-		line_width=0.1
-		plt.xticks(np.arange(xmin,xmax+line_width,line_width))
-		pylab.box(False)
-		plt.show()
+		for i in range(len(attentions)):
+			fig,ax=plt.subplots(figsize=(10,10))
+			fig.set_figheight(1)
+			plt.tight_layout()
+			plt.tick_params(labelbottom=True, bottom=False)
+			plt.tick_params(labelleft=False, left=False)
+			plt.scatter(attentions[i], y, c="red", marker="o",alpha=0.3)
+			plt.hlines(y=0,xmin=xmin,xmax=xmax)
+			plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
+			plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
+			line_width=0.1
+			plt.xticks(np.arange(xmin,xmax+line_width,line_width))
+			pylab.box(False)
+			#plt.savefig(args.input_file + '_attention_ecfp_' + str(i) + '.png') 
+			plt.savefig("test.png") 
+			#plt.show()
 		
 	print("Neural test RMSE", test_loss_neural)
 	print("time : ", time.time() - ALL_TIME)

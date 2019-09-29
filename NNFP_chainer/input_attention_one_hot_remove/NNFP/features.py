@@ -34,7 +34,7 @@ def atom_features_from_fcfp(mol):
 			return arr
 		f4 = to_TF(f3)
 		ff = list(f4) #FCFP has 6 features
-		del ff[0:2]
+		del ff[8:10]
 		return ff
 	gl = list(map(to_bin, gl))
 

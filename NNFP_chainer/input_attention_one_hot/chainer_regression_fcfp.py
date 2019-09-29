@@ -30,11 +30,11 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
-			 	 'train' : 20000,
-			 	 #'train' : 1000,
-			 	 'val' : 250,
-			 	 'test' : 5000}
-			 	 #'test' : 100}
+			 	 #'train' : 20000,
+			 	 'train' : 2000,
+			 	 'val' : 200,
+			 	 #'test' : 5000}
+			 	 'test' : 200}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
@@ -74,13 +74,13 @@ class Main(Chain):
 	
 	def __call__(self, x, y):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = self.prediction(x)
+		pred, _ = self.prediction(x)
 		return F.mean_squared_error(pred, y)
 
 	def prediction(self, x):
 		x = Variable(x)
 		#ecfp = self.build_ecfp(x)
-		fcfp = self.build_fcfp(x)
+		fcfp, input_attention = self.build_ecfp(x)
 		#ecfp_beta = self.ecfp_attension(ecfp)
 		#fcfp_beta = self.ecfp_attension(fcfp)
 		#ecfp_beta = self.ecfp_attension_1(ecfp)
@@ -103,12 +103,13 @@ class Main(Chain):
 
 		#pred = self.dnn(attension_fcfp + attension_ecfp)
 		pred = self.dnn(fcfp)
-		return pred
+		return pred, input_attention
 
 	def mse(self, x, y, undo_norm):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = undo_norm(self.prediction(x))
-		return F.mean_squared_error(pred, y)
+		pred, input_attention = self.prediction(x)
+		pred = undo_norm(pred)
+		return F.mean_squared_error(pred, y), input_attention
 	
 def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=128, seed=0,
 				validation_smiles=None, validation_raw_targets=None):
@@ -201,33 +202,35 @@ def main():
 		trained_NNFP = Main(model_params) 
 		serializers.load_npz(args.load_npz, trained_NNFP)	
 		_, undo_norm = normalize_array(y_tests)
-		mse, attention_ecfp, attention_fcfp = trained_NNFP.mse(x_tests, y_tests, undo_norm)
-		return math.sqrt(mse._data[0]), attention_ecfp, attention_fcfp
+		mse, input_attention = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), input_attention
 
 	print("Starting neural fingerprint experiment...")
 	if args.load_npz == None:
 		test_loss_neural, conv_training_curve = run_conv_experiment()
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
-		x_fcfp = attention_fcfp._data[0]
+		x_fcfp = input_attention._data[0]
+		print(x_fcfp.shape)
 		y = [0] * len(x_fcfp)
-
-		fig,ax=plt.subplots(figsize=(10,10))
-		fig.set_figheight(1)
-		ax.tick_params(labelbottom=True, bottom=False)
-		ax.tick_params(labelleft=False, left=False)
+		attentions = np.split(x_fcfp,6,1)
 
 		xmin, xmax = 0, 1
-		plt.tight_layout()
-		plt.scatter(x_ecfp, y, c="red", marker="o",alpha=0.3)
-		plt.scatter(x_fcfp, y, c="blue", marker="o",alpha=0.3)
-		plt.hlines(y=0,xmin=xmin,xmax=xmax)
-		plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
-		plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
-		line_width=0.1
-		plt.xticks(np.arange(xmin,xmax+line_width,line_width))
-		pylab.box(False)
-		plt.show()
+		for i in range(len(attentions)):
+			fig,ax=plt.subplots(figsize=(10,10))
+			fig.set_figheight(1)
+			plt.tight_layout()
+			plt.tick_params(labelbottom=True, bottom=False)
+			plt.tick_params(labelleft=False, left=False)
+			plt.scatter(attentions[i], y, c="red", marker="o",alpha=0.3)
+			plt.hlines(y=0,xmin=xmin,xmax=xmax)
+			plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
+			plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
+			line_width=0.1
+			plt.xticks(np.arange(xmin,xmax+line_width,line_width))
+			pylab.box(False)
+			plt.savefig(args.input_file + '_attention_fcfp_' + str(i) + '.png') 
+			#plt.show()
 
 	print("Neural test RMSE", test_loss_neural)
 	print("time : ", time.time() - ALL_TIME)

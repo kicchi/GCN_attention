@@ -148,7 +148,6 @@ class ECFP(Chain): #fp_switch: ecfp is False
 				h2 = attention_layer2(h1)
 				attention_layer_output = attention_layer3(h2)
 				attention_layer_output = F.softmax(attention_layer_output)
-				#print(attention_layer_output)
 				rep_attention_layer_output = F.repeat(attention_layer_output,(44,6,5,6,2),axis=1)
 
 				return masked_weights * rep_attention_layer_output, attention_layer_output
@@ -224,10 +223,9 @@ class FCFP(Chain): #fp_switch: fcfp is True
 				h2 = attention_layer2(h1)
 				attention_layer_output = attention_layer3(h2)
 				attention_layer_output = F.softmax(attention_layer_output)
-				#print(attention_layer_output)
-				rep_attention_layer_output = attention_layer_output
-				attention_layer_output = F.repeat(rep_attention_layer_output,(1,1,1,1,1,1),axis=1)
-				return masked_weights * attention_layer_output, attention_layer_output
+				rep_attention_layer_output = F.repeat(rep_attention_layer_output,(1,1,1,1,1,1),axis=1)
+				return masked_weights * rep_attention_layer_output, attention_layer_output
+				
 			attentioned_atom_features, attention_layer_output = attention_layer(masked_weights)
 			atom_features = attentioned_atom_features
 
@@ -254,7 +252,7 @@ class FCFP(Chain): #fp_switch: fcfp is True
 			return output, attention_layer_output
 	
 		def compute_atom_activations(self, smiles):
-			_, atom_activations, array_rep = output_layer_fun_and_atom_activations(smiles)
+			_, atom_activations, array_rep, _ = output_layer_fun_and_atom_activations(smiles)
 			return atom_activations, array_rep
 		conv_fp_func = output_layer_fun
 		return (conv_fp_func(self, smiles))

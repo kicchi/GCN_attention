@@ -1,4 +1,4 @@
-#coding: utf-8
+oding: utf-8
 import math
 import argparse
 import numpy as np

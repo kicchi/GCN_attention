@@ -3,6 +3,8 @@ import math
 import argparse
 import numpy as np
 import numpy.random as npr
+import matplotlib.pyplot as plt
+import pylab
 #import cupy as np #GPUを使うためのnumpy
 import chainer 
 from chainer import cuda, Function, Variable, optimizers
@@ -54,6 +56,7 @@ train_params = dict(num_iters = 100,
 	
 class Main(Chain):
 	def __init__(self, model_params):
+		initializer = chainer.initializers.HeNormal()
 		super(Main, self).__init__(
 			build_ecfp = Finger_print.ECFP(model_params),
 			build_fcfp = Finger_print.FCFP(model_params),
@@ -70,12 +73,12 @@ class Main(Chain):
 	
 	def __call__(self, x, y):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = self.prediction(x)
+		pred,_ = self.prediction(x)
 		return F.mean_squared_error(pred, y)
 
 	def prediction(self, x):
 		x = Variable(x)
-		ecfp = self.build_ecfp(x)
+		ecfp, input_attention = self.build_ecfp(x)
 		#fcfp = self.build_fcfp(x)
 		#ecfp_beta = self.ecfp_attension(ecfp)
 		#fcfp_beta = self.ecfp_attension(fcfp)
@@ -99,12 +102,13 @@ class Main(Chain):
 
 		#pred = self.dnn(attension_fcfp + attension_ecfp)
 		pred = self.dnn(ecfp)
-		return pred
+		return pred, input_attention
 
 	def mse(self, x, y, undo_norm):
 		y = Variable(np.array(y, dtype=np.float32))
-		pred = undo_norm(self.prediction(x))
-		return F.mean_squared_error(pred, y)
+		pred, input_attention = self.prediction(x)
+		pred = undo_norm(pred)
+		return F.mean_squared_error(pred, y), input_attention
 	
 def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=128, seed=0,
 				validation_smiles=None, validation_raw_targets=None):
@@ -134,13 +138,13 @@ def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=
 		#print "epoch ", epoch, "loss", loss._data[0]
 		#print "epoch ", epoch, "loss", loss._data[0]
 		if epoch % 100 == 0:
-			train_preds = model.mse(train_smiles, train_raw_targets, undo_norm)
+			train_preds,_ = model.mse(train_smiles, train_raw_targets, undo_norm)
 			cur_loss = loss._data[0]
 			training_curve.append(cur_loss)
 			print("Iteration", epoch, "loss", math.sqrt(cur_loss), \
 				"train RMSE", math.sqrt((train_preds._data[0])))
 			if validation_smiles is not None:
-				validation_preds = model.mse(validation_smiles, validation_raw_targets, undo_norm)
+				validation_preds,_ = model.mse(validation_smiles, validation_raw_targets, undo_norm)
 				print("Validation RMSE", epoch, ":", math.sqrt((validation_preds._data[0])))
 		#print("1 EPOCH TIME : ", time.time() - epoch_time)
 		#print loss
@@ -154,6 +158,7 @@ def main():
 	parser = argparse.ArgumentParser()
 	parser.add_argument("--input_file",type=str)
 	parser.add_argument("--epochs", type=int)
+	parser.add_argument("--load_npz", type=str)
 	args = parser.parse_args()
 
 	task_params = eval(args.input_file.split(".csv")[0]+'_params')
@@ -187,12 +192,46 @@ def main():
 					 args.epochs, 
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
-		save_name = "input-attention-ecfp-delaney-top-remove.npz"
+		save_name = "input-attention-ecfp-cep-top-remove.npz"
 		serializers.save_npz(save_name, trained_NNFP)
-		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
+		mse, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), conv_training_curve
+
+	def load_model_experiment():
+		'''Initialize model'''
+		trained_NNFP = Main(model_params) 
+		serializers.load_npz(args.load_npz, trained_NNFP)	
+		_, undo_norm = normalize_array(y_tests)
+		mse, input_attention = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), input_attention
 
 	print("Starting neural fingerprint experiment...")
-	test_loss_neural, conv_training_curve = run_conv_experiment()
+	if args.load_npz == None:
+		test_loss_neural, conv_training_curve = run_conv_experiment()
+	else:
+		test_loss_neural, input_attention = load_model_experiment()
+		x_ecfp = input_attention._data[0]
+		y = [0] * len(x_ecfp)
+		attentions = np.split(x_ecfp,5,1)
+
+		xmin, xmax = 0, 1
+		for i in range(len(attentions)):
+			fig,ax=plt.subplots(figsize=(10,10))
+			fig.set_figheight(1)
+			plt.tight_layout()
+			plt.tick_params(labelbottom=True, bottom=False)
+			plt.tick_params(labelleft=False, left=False)
+			plt.scatter(attentions[i], y, c="red", marker="o",alpha=0.3)
+			plt.hlines(y=0,xmin=xmin,xmax=xmax)
+			plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
+			plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
+			line_width=0.1
+			plt.xticks(np.arange(xmin,xmax+line_width,line_width))
+			pylab.box(False)
+			#plt.savefig(args.input_file + '_attention_ecfp_' + str(i) + '.png') 
+			plt.savefig("test.png") 
+			#plt.show()
+
 	print("Neural test RMSE", test_loss_neural)
 	print("time : ", time.time() - ALL_TIME)
 	#result_plot(conv_training_curve, train_params)
