@@ -6,6 +6,9 @@ import numpy as np
 import numpy.random as npr
 import matplotlib.pyplot as plt
 import pylab
+import chart_studio.plotly as py
+import plotly.figure_factory as ff
+import plotly.offline as offline
 #import cupy as np #GPUを使うためのnumpy
 import chainer 
 from chainer import cuda, Function, Variable, optimizers
@@ -31,10 +34,10 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
 			 	 #'train' : 20000,
-			 	 'train' : 2000,
+			 	 'train' : 1000,
 			 	 'val' : 200,
 			 	 #'test' : 5000}
-			 	 'test' : 200}
+			 	 'test' : 100}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
@@ -193,8 +196,8 @@ def main():
 					 args.epochs, 
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
-		#save_name = "input_attention_one_hot_cep.npz"
-		save_name = "test.npz"
+		save_name = "input_attention_one_hot_" + args.input_file + ".npz"
+		#save_name = "test.npz"
 		serializers.save_npz(save_name, trained_NNFP)
 		mse, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
 		return math.sqrt(mse._data[0]), conv_training_curve
@@ -213,26 +216,17 @@ def main():
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
 		x_ecfp = input_attention._data[0]
-		y = [0] * len(x_ecfp)
-		attentions = np.split(x_ecfp,5,1)
+		np.savetxt('ecfp_propaty_cep.txt',x_ecfp,delimiter=' ')
+		np.set_printoptions(threshold=np.inf)
 
-		xmin, xmax = 0, 1
-		for i in range(len(attentions)):
-			fig,ax=plt.subplots(figsize=(10,10))
-			fig.set_figheight(1)
-			plt.tight_layout()
-			plt.tick_params(labelbottom=True, bottom=False)
-			plt.tick_params(labelleft=False, left=False)
-			plt.scatter(attentions[i], y, c="red", marker="o",alpha=0.3)
-			plt.hlines(y=0,xmin=xmin,xmax=xmax)
-			plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
-			plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
-			line_width=0.1
-			plt.xticks(np.arange(xmin,xmax+line_width,line_width))
-			pylab.box(False)
-			#plt.savefig(args.input_file + '_attention_ecfp_' + str(i) + '.png') 
-			plt.savefig("test.png") 
-			#plt.show()
+		def figure_histgram(weight):
+			attentions = weight.T	
+			hist_data = [attentions[i] + i for i in range(len(attentions))]
+			group_labels = ['a', 'b', 'c', 'd', 'e']
+			fig = ff.create_distplot(hist_data, group_labels, bin_size=.2)
+			fig.show()
+
+		figure_histgram(x_ecfp)
 		
 	print("Neural test RMSE", test_loss_neural)
 	print("time : ", time.time() - ALL_TIME)

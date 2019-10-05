@@ -26,20 +26,21 @@ delaney_params = {'target_name' : 'measured log solubility in mols per litre',
 			 	 'data_file'  : 'delaney.csv',
 			 	 'train' : 700,
 			 	 'val' : 200,
-			 	 'test' : 100}
+			 	 'test' : 200}
 
 cep_params = {'target_name' : 'PCE',
 				'data_file'  : 'cep.csv',
 			 	 #'train' : 20000,
-			 	 'train' : 1000,
+			 	 'train' : 500,
 			 	 'val' : 250,
-			 	 #'test' : 5000}
-			 	 'test' : 200}
+			 	 #'test' : 6000}
+			 	 'test' : 50}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 200,
 			 	 'val' : 19,
 			 	 'test' : 50}
+			 	 #'test' : 2000}
 
 model_params = dict(fp_length = 25,      
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
@@ -80,12 +81,13 @@ class Main(Chain):
 		ecfp_fcfp = F.concat((ecfp,fcfp),axis=1)
 		h1 = self.attention_layer1(ecfp_fcfp)
 		h2 = self.attention_layer2(h1)
-		attentions = self.attention_layer3(h2)
-		attentions = F.softmax(attentions)
+		h3 = self.attention_layer3(h2)
+		attentions = F.softmax(h3)
 		attentions = F.split_axis(attentions, 2, 1)
 		attention_ecfp = attentions[0]
 		attention_fcfp = attentions[1]
-		attentioned_ecfc = F.concat((attention_ecfp * ecfp, attention_fcfp * fcfp),axis=1)
+		attentioned_ecfc = F.concat((attention_fcfp * fcfp, attention_ecfp * ecfp),axis=1)
+		#attentioned_ecfc = F.concat((attention_ecfp * ecfp, attention_fcfp * fcfp),axis=1)
 
 		pred = self.dnn(attentioned_ecfc)
 		return pred, attention_ecfp, attention_fcfp
@@ -178,7 +180,7 @@ def main():
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
 		#save_name = "fp_concat_" + args.input_file + "_fp_length_" + str(args.fp_length) + "_" + str(args.i) + ".npz"
-		save_name = "test.npz"
+		save_name = "test_cep.npz"
 		serializers.save_npz(save_name, trained_NNFP)
 		mse, _, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
 		return math.sqrt(mse._data[0]), conv_training_curve
@@ -199,7 +201,9 @@ def main():
 		test_loss_neural, attention_ecfp, attention_fcfp = load_model_experiment()
 		x_ecfp = attention_ecfp._data[0]
 		x_fcfp = attention_fcfp._data[0]
-		print(x_fcfp)
+
+		print(x_fcfp,x_ecfp)
+		np.savetxt('weight_delaney.txt',x_ecfp,delimiter=' ')
 		y = [0] * len(x_ecfp)
 
 		fig,ax=plt.subplots(figsize=(10,10))
@@ -218,9 +222,9 @@ def main():
 		plt.xticks(np.arange(xmin,xmax+line_width,line_width))
 		pylab.box(False)
 		#plt.legend(loc='upper right', bbox_to_anchor=(0.2,1,0.15,0), borderaxespad=0.)
-		plt.show()
+		#plt.show()
 		#plt.savefig("fp_scalar_" + args.input_file + ".png")
-		plt.savefig("test.png")
+		#plt.savefig("test.png")
 
 	
 	print("Neural test RMSE", test_loss_neural)

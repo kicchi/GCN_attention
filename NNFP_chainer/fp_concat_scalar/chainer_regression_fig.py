@@ -1,0 +1,236 @@
+#coding: utf-8
+import math
+import argparse
+import copy
+import numpy as np
+import numpy.random as npr
+import matplotlib.pyplot as plt
+import pylab
+#import cupy as np #GPUを使うためのnumpy
+import chainer 
+from chainer import cuda, Function, Variable, optimizers
+from chainer import Link, Chain
+from chainer import serializers
+import chainer.functions as F
+import chainer.links as L
+import time
+
+from NNFP import load_data 
+from NNFP import result_plot 
+from NNFP import normalize_array
+from NNFP import Deep_neural_network
+from NNFP import Finger_print
+
+
+delaney_params = {'target_name' : 'measured log solubility in mols per litre',
+			 	 'data_file'  : 'delaney.csv',
+			 	 'train' : 700,
+			 	 'val' : 200,
+			 	 'test' : 200}
+
+cep_params = {'target_name' : 'PCE',
+				'data_file'  : 'cep.csv',
+			 	 #'train' : 20000,
+			 	 'train' : 700,
+			 	 'val' : 250,
+			 	 'test' : 5000}
+			 	 #'test' : 100}
+malaria_params = {'target_name' : 'activity',
+				'data_file'  : 'malaria.csv',
+			 	 'train' : 800,
+			 	 'val' : 19,
+			 	 'test' : 2000}
+
+model_params = dict(fp_length = 25,      
+					fp_depth = 4,       #NNの層と、FPの半径は同じ
+					conv_width = 20,    #必要なパラメータはこれだけ（？）
+					h1_size = 100,      #最上位の中間層のサイズ
+					importance_l1_size = 100,
+					importance_l2_size = 50,
+					L2_reg = np.exp(-2))
+
+train_params = dict(num_iters = 100,
+					batch_size = 50,
+					init_scale = np.exp(-4),
+					step_size = np.exp(-6))
+
+	
+class Main(Chain):
+	def __init__(self, model_params):
+		initializer = chainer.initializers.HeNormal()
+		super(Main, self).__init__(
+			build_ecfp = Finger_print.ECFP(model_params),
+			build_fcfp = Finger_print.FCFP(model_params),
+			attention_layer1 = L.Linear(2 * model_params['fp_length'], model_params['importance_l1_size'],initialW=initializer),
+			#attention_layer2 = L.Linear(model_params['importance_l1_size'], model_params['importance_l2_size'],initialW=initializer),
+			attention_layer2 = L.Linear(model_params['importance_l1_size'], 1,initialW=initializer),
+			attention_layer3 = L.Linear(model_params['importance_l1_size'], 1,initialW=initializer),
+			dnn = Deep_neural_network.DNN(model_params),
+		)
+	
+	def __call__(self, x, y):
+		y = Variable(np.array(y, dtype=np.float32))
+		pred,_,_ = self.prediction(x)
+		return F.mean_squared_error(pred, y)
+
+	def prediction(self, x):
+		x = Variable(x)
+		ecfp = self.build_ecfp(x)
+		fcfp = self.build_fcfp(x)
+
+		ecfp_fcfp = F.concat((ecfp,fcfp),axis=1)
+		h1 = self.attention_layer1(ecfp_fcfp)
+		#h2 = self.attention_layer2(h1)
+		attentions_1 = F.rrelu(self.attention_layer2(h1))
+		attentions_2 = F.rrelu(self.attention_layer3(h1))
+		attentions = F.concat((attentions_1, attentions_2), axis=1)
+		attentions = F.softmax(attentions)
+		attentions = F.split_axis(attentions, 2, 1)
+		attention_ecfp = attentions[0]
+		attention_fcfp = attentions[1]
+		attentioned_ecfc = F.concat((attention_ecfp * ecfp, attention_fcfp * fcfp),axis=1)
+		#attentioned_ecfc = F.concat((attention_ecfp * ecfp, attention_fcfp * fcfp),axis=1)
+
+		pred = self.dnn(attentioned_ecfc)
+		return pred, attention_ecfp, attention_fcfp
+
+	def mse(self, x, y, undo_norm):
+		y = Variable(np.array(y, dtype=np.float32))
+		pred, attention_ecfp, attention_fcfp = self.prediction(x)
+		pred = undo_norm(pred)
+		return F.mean_squared_error(pred, y), attention_ecfp, attention_fcfp
+
+	def attention(self):
+		return self.attentions
+		
+	
+def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=128, seed=0,
+				validation_smiles=None, validation_raw_targets=None):
+
+	train_targets, undo_norm = normalize_array(train_raw_targets)
+	training_curve = []
+	optimizer = optimizers.Adam()
+	optimizer.setup(model)
+	optimizer.add_hook(chainer.optimizer.WeightDecay(0.0001))	
+	
+	num_data = len(train_smiles)
+	x = train_smiles
+	y = train_targets
+	sff_idx = npr.permutation(num_data)
+	for epoch in range(num_epoch):
+		epoch_time = time.time()
+		for idx in range(0,num_data, batch_size):
+			batched_x = x[sff_idx[idx:idx+batch_size
+				if idx + batch_size < num_data else num_data]]
+			batched_y = y[sff_idx[idx:idx+batch_size
+				if idx + batch_size < num_data else num_data]]
+			model.zerograds()
+			loss = model(batched_x, batched_y)
+			loss.backward()
+			optimizer.update()
+		if epoch % 100 == 0:
+			train_preds, _, _ = model.mse(train_smiles, train_raw_targets, undo_norm)
+			cur_loss = loss._data[0]
+			training_curve.append(cur_loss)
+			print("Iteration", epoch, "loss", math.sqrt(cur_loss), \
+				"train RMSE", math.sqrt((train_preds._data[0])))
+			if validation_smiles is not None:
+				validation_preds, _, _ = model.mse(validation_smiles, validation_raw_targets, undo_norm)
+				print("Validation RMSE", epoch, ":", math.sqrt((validation_preds._data[0])))
+
+		
+	return model, training_curve, undo_norm
+
+def main():
+	print("Loading data...")
+	#args
+	parser = argparse.ArgumentParser()
+	parser.add_argument("--input_file",type=str)
+	parser.add_argument("--epochs", type=int)
+	parser.add_argument("--fp_length", type=int)
+	parser.add_argument("--i", type=int)
+	parser.add_argument("--load_npz", type=str)
+	args = parser.parse_args()
+	model_params['fp_length'] = args.fp_length
+
+	task_params = eval(args.input_file.split(".csv")[0]+'_params')
+	ALL_TIME = time.time()
+	traindata, valdata, testdata = load_data(
+		task_params['data_file'], (task_params['train'], task_params['val'], task_params['test']),
+		input_name = 'smiles', target_name = task_params['target_name'])
+	x_trains, y_trains = traindata
+	x_vals, y_vals = valdata
+	x_tests, y_tests = testdata
+	x_trains = np.reshape(x_trains, (task_params['train'], 1))
+	y_trains = np.reshape(y_trains, (task_params['train'], 1))
+	x_vals = np.reshape(x_vals, (task_params['val'], 1))
+	y_vals = np.reshape(y_vals, (task_params['val'], 1))
+	x_tests = np.reshape(x_tests, (task_params['test'], 1))
+	y_tests = np.reshape(y_tests, (task_params['test'], 1)).astype(np.float32)
+
+	def run_conv_experiment():
+		'''Initialize model'''
+		NNFP = Main(model_params) 
+		optimizer = optimizers.Adam()
+		optimizer.setup(NNFP)
+
+		'''Learn'''
+		trained_NNFP, conv_training_curve, undo_norm = \
+			train_nn(NNFP, 
+					 x_trains, y_trains,  
+					 args.epochs,
+					 validation_smiles=x_vals, 
+					 validation_raw_targets=y_vals)
+		#save_name = "fp_concat_" + args.input_file + "_fp_length_" + str(args.fp_length) + "_" + str(args.i) + ".npz"
+		save_name = "fig_" + args.input_file + ".npz"
+		serializers.save_npz(save_name, trained_NNFP)
+		mse, _, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), conv_training_curve
+	
+	def load_model_experiment():
+		'''Initialize model'''
+		trained_NNFP = Main(model_params) 
+		serializers.load_npz(args.load_npz, trained_NNFP)	
+		_, undo_norm = normalize_array(y_tests)
+		mse, attention_ecfp, attention_fcfp = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), attention_ecfp, attention_fcfp
+
+
+	print("Starting neural fingerprint experiment...")
+	if args.load_npz == None:
+		test_loss_neural, conv_training_curve = run_conv_experiment()
+	else:
+		test_loss_neural, attention_ecfp, attention_fcfp = load_model_experiment()
+		x_ecfp = attention_ecfp._data[0]
+		x_fcfp = attention_fcfp._data[0]
+		print(x_fcfp)
+		np.savetxt('weight_malaria.txt',np.concatenate([x_ecfp,x_fcfp],1),delimiter=' ')
+		y = [0] * len(x_ecfp)
+
+		fig,ax=plt.subplots(figsize=(10,10))
+		fig.set_figheight(1)
+		ax.tick_params(labelbottom=True, bottom=False)
+		ax.tick_params(labelleft=False, left=False)
+
+		xmin, xmax = 0, 1
+		plt.tight_layout()
+		plt.scatter(x_ecfp, y, c="red", marker="o",alpha=0.3,label="Input Representation 1")
+		plt.scatter(x_fcfp, y, c="blue", marker="o",alpha=0.3,label="Input Representation 2")
+		plt.hlines(y=0,xmin=xmin,xmax=xmax)
+		plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
+		plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
+		line_width=0.1
+		plt.xticks(np.arange(xmin,xmax+line_width,line_width))
+		pylab.box(False)
+		#plt.legend(loc='upper right', bbox_to_anchor=(0.2,1,0.15,0), borderaxespad=0.)
+		plt.show()
+		#plt.savefig("fp_scalar_" + args.input_file + ".png")
+		#plt.savefig("test.png")
+
+	
+	print("Neural test RMSE", test_loss_neural)
+	print("time : ", time.time() - ALL_TIME)
+	#result_plot(conv_training_curve, train_params)
+
+if __name__ == '__main__':
+	main()

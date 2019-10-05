@@ -6,6 +6,9 @@ import numpy as np
 import numpy.random as npr
 import matplotlib.pyplot as plt
 import pylab
+import chart_studio.plotly as py
+import plotly.figure_factory as ff
+import plotly.offline as offline
 #import cupy as np #GPUを使うためのnumpy
 import chainer 
 from chainer import cuda, Function, Variable, optimizers
@@ -33,8 +36,8 @@ cep_params = {'target_name' : 'PCE',
 			 	 #'train' : 20000,
 			 	 'train' : 2000,
 			 	 'val' : 200,
-			 	 #'test' : 5000}
-			 	 'test' : 200}
+			 	 'test' : 5000}
+			 	 #'test' : 200}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
@@ -80,7 +83,7 @@ class Main(Chain):
 	def prediction(self, x):
 		x = Variable(x)
 		#ecfp = self.build_ecfp(x)
-		fcfp, input_attention = self.build_ecfp(x)
+		fcfp, input_attention = self.build_fcfp(x)
 		#ecfp_beta = self.ecfp_attension(ecfp)
 		#fcfp_beta = self.ecfp_attension(fcfp)
 		#ecfp_beta = self.ecfp_attension_1(ecfp)
@@ -139,13 +142,13 @@ def train_nn(model, train_smiles, train_raw_targets, num_epoch=1000, batch_size=
 		#print "epoch ", epoch, "loss", loss._data[0]
 		#print "epoch ", epoch, "loss", loss._data[0]
 		if epoch % 100 == 0:
-			train_preds = model.mse(train_smiles, train_raw_targets, undo_norm)
+			train_preds, _ = model.mse(train_smiles, train_raw_targets, undo_norm)
 			cur_loss = loss._data[0]
 			training_curve.append(cur_loss)
 			print("Iteration", epoch, "loss", math.sqrt(cur_loss), \
 				"train RMSE", math.sqrt((train_preds._data[0])))
 			if validation_smiles is not None:
-				validation_preds = model.mse(validation_smiles, validation_raw_targets, undo_norm)
+				validation_preds, _ = model.mse(validation_smiles, validation_raw_targets, undo_norm)
 				print("Validation RMSE", epoch, ":", math.sqrt((validation_preds._data[0])))
 		#print("1 EPOCH TIME : ", time.time() - epoch_time)
 		#print loss
@@ -193,9 +196,10 @@ def main():
 					 args.epochs, 
 					 validation_smiles=x_vals, 
 					 validation_raw_targets=y_vals)
-		save_name = "input_attention_one_hot_delaney.npz"
+		save_name = "input_attention_one_hot_" + args.input_file + ".npz"
 		serializers.save_npz(save_name, trained_NNFP)
-		return math.sqrt(trained_NNFP.mse(x_tests, y_tests, undo_norm)._data[0]), conv_training_curve
+		mse, _ = trained_NNFP.mse(x_tests, y_tests, undo_norm)
+		return math.sqrt(mse._data[0]), conv_training_curve
 
 	def load_model_experiment():
 		'''Initialize model'''
@@ -211,26 +215,18 @@ def main():
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
 		x_fcfp = input_attention._data[0]
-		print(x_fcfp.shape)
-		y = [0] * len(x_fcfp)
-		attentions = np.split(x_fcfp,6,1)
+		np.savetxt('fcfp_propaty_cep.txt',x_fcfp,delimiter=' ')
+		np.set_printoptions(threshold=np.inf)
 
-		xmin, xmax = 0, 1
-		for i in range(len(attentions)):
-			fig,ax=plt.subplots(figsize=(10,10))
-			fig.set_figheight(1)
-			plt.tight_layout()
-			plt.tick_params(labelbottom=True, bottom=False)
-			plt.tick_params(labelleft=False, left=False)
-			plt.scatter(attentions[i], y, c="red", marker="o",alpha=0.3)
-			plt.hlines(y=0,xmin=xmin,xmax=xmax)
-			plt.vlines(x=[i for i in range(xmin,xmax+1,1)],ymin=-0.04,ymax=0.04)
-			plt.vlines(x=[i/10 for i in range(xmin*10,xmax*10+1,1)],ymin=-0.02,ymax=0.02)
-			line_width=0.1
-			plt.xticks(np.arange(xmin,xmax+line_width,line_width))
-			pylab.box(False)
-			plt.savefig(args.input_file + '_attention_fcfp_' + str(i) + '.png') 
-			#plt.show()
+		def figure_histgram(weight):
+			attentions = weight.T	
+			hist_data = [attentions[i] + i for i in range(len(attentions))]
+			group_labels = ['Donor', 'Acceptor', 'Aromatic', 'Halogen', 'Acidic', 'Basic']
+			fig = ff.create_distplot(hist_data, group_labels, bin_size=.2)
+			fig.update_layout(title_text='Da')
+			fig.show()
+
+		figure_histgram(x_fcfp)
 
 	print("Neural test RMSE", test_loss_neural)
 	print("time : ", time.time() - ALL_TIME)
