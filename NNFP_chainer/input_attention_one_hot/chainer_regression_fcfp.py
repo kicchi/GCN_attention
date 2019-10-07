@@ -42,7 +42,7 @@ malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
 			 	 'val' : 197,
-			 	 'test' : 100}
+			 	 'test' : 2000}
 
 model_params = dict(fp_length = 50,      
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
@@ -215,7 +215,7 @@ def main():
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
 		x_fcfp = input_attention._data[0]
-		np.savetxt('fcfp_propaty_cep.txt',x_fcfp,delimiter=' ')
+		np.savetxt('fcfp_propaty_' + args.input_file,x_fcfp,delimiter=' ')
 		np.set_printoptions(threshold=np.inf)
 
 		def figure_histgram(weight):
@@ -224,7 +224,7 @@ def main():
 			group_labels = ['Donor', 'Acceptor', 'Aromatic', 'Halogen', 'Acidic', 'Basic']
 			fig = ff.create_distplot(hist_data, group_labels, bin_size=.2)
 			fig.update_layout(title_text='Da')
-			fig.show()
+			#fig.show()
 
 		figure_histgram(x_fcfp)
 

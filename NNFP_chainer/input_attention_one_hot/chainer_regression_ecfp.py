@@ -36,13 +36,13 @@ cep_params = {'target_name' : 'PCE',
 			 	 #'train' : 20000,
 			 	 'train' : 1000,
 			 	 'val' : 200,
-			 	 #'test' : 5000}
-			 	 'test' : 100}
+			 	 'test' : 5000}
+			 	 #'test' : 100}
 malaria_params = {'target_name' : 'activity',
 				'data_file'  : 'malaria.csv',
 			 	 'train' : 1000,
 			 	 'val' : 197,
-			 	 'test' : 100}
+			 	 'test' : 2000}
 
 model_params = dict(fp_length = 50,      
 					fp_depth = 4,       #NNの層と、FPの半径は同じ
@@ -216,15 +216,15 @@ def main():
 	else:
 		test_loss_neural, input_attention = load_model_experiment()
 		x_ecfp = input_attention._data[0]
-		np.savetxt('ecfp_propaty_cep.txt',x_ecfp,delimiter=' ')
+		np.savetxt('ecfp_propaty_' + args.input_file,x_ecfp,delimiter=' ')
 		np.set_printoptions(threshold=np.inf)
 
 		def figure_histgram(weight):
 			attentions = weight.T	
 			hist_data = [attentions[i] + i for i in range(len(attentions))]
 			group_labels = ['a', 'b', 'c', 'd', 'e']
-			fig = ff.create_distplot(hist_data, group_labels, bin_size=.2)
-			fig.show()
+			#fig = ff.create_distplot(hist_data, group_labels, bin_size=.2)
+			#fig.show()
 
 		figure_histgram(x_ecfp)
 		
